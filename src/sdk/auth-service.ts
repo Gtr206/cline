@@ -907,6 +907,19 @@ export class AuthService {
 			[apiKeyField]: apiKey,
 		}
 		stateManager.setApiConfiguration(updatedConfig)
+
+		void import("./sdk-provider-settings-service")
+			.then(({ saveSdkProviderSettings }) => {
+				saveSdkProviderSettings(stateManager, {
+					providerId: provider,
+					mode: "act",
+					apiKey,
+					enabled: true,
+				})
+			})
+			.catch((error) => {
+				Logger.warn(`[SdkAuthService] Failed to sync ${provider} API key to SDK provider settings:`, error)
+			})
 	}
 
 	/**

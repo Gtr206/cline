@@ -312,7 +312,14 @@ const ApiOptions = ({
 		"openai-codex": () => (
 			<OpenAiCodexProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />
 		),
-		openrouter: () => <OpenRouterProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />,
+		openrouter: () => (
+			<OpenRouterProvider
+				currentMode={currentMode}
+				isPopup={isPopup}
+				provider={selectedSdkProvider}
+				showModelOptions={showModelOptions}
+			/>
+		),
 		qwen: () => <QwenProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />,
 		"qwen-code": () => <QwenCodeProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />,
 		requesty: () => <RequestyProvider currentMode={currentMode} isPopup={isPopup} showModelOptions={showModelOptions} />,
