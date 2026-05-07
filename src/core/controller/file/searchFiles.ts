@@ -1,4 +1,11 @@
-import { RipgrepError, searchWorkspaceFiles, searchWorkspaceFilesMultiroot } from "@services/search/file-search"
+import {
+	type FileSearchSource,
+	RipgrepError,
+	type SearchWorkspaceFilesResult,
+	searchWorkspaceFiles,
+	searchWorkspaceFilesMultiroot,
+} from "@services/search/file-search"
+
 import { telemetryService } from "@services/telemetry"
 import { FileSearchRequest, FileSearchResults, FileSearchType } from "@shared/proto/cline/file"
 import { convertSearchResultsToProtoFileInfos } from "@shared/proto-conversions/file/search-result-conversion"
@@ -50,11 +57,11 @@ export async function searchFiles(controller: Controller, request: FileSearchReq
 		const workspaceManager = await controller.ensureWorkspaceManager()
 		const hasMultirootSupport = workspaceManager && workspaceManager.getRoots()?.length > 0
 
-		let searchResults: Array<{ path: string; type: "file" | "folder"; label?: string; workspaceName?: string }>
+		let searchResult: SearchWorkspaceFilesResult
 
 		if (hasMultirootSupport) {
 			fsContextPath = workspaceManager.getRoots()[0]?.path
-			searchResults = await searchWorkspaceFilesMultiroot(
+			searchResult = await searchWorkspaceFilesMultiroot(
 				request.query || "",
 				workspaceManager,
 				request.limit || 20,
@@ -78,7 +85,7 @@ export async function searchFiles(controller: Controller, request: FileSearchReq
 
 			fsContextPath = workspacePath
 			// Call file search service with query from request
-			searchResults = await searchWorkspaceFiles(
+			searchResult = await searchWorkspaceFiles(
 				request.query || "",
 				workspacePath,
 				request.limit || 20, // Use default limit of 20 if not specified
@@ -86,8 +93,10 @@ export async function searchFiles(controller: Controller, request: FileSearchReq
 			)
 		}
 
+		const searchSource: FileSearchSource = searchResult.source
+
 		// Convert search results to proto FileInfo objects using the conversion function
-		const protoResults = convertSearchResultsToProtoFileInfos(searchResults)
+		const protoResults = convertSearchResultsToProtoFileInfos(searchResult.items)
 
 		// Track search results telemetry
 		// Determine search type for telemetry
@@ -100,12 +109,13 @@ export async function searchFiles(controller: Controller, request: FileSearchReq
 
 		const fsContext = await getFsInfo(fsContextPath)
 
-		await telemetryService.captureMentionSearchResults(
+		telemetryService.captureMentionSearchResults(
 			request.query || "",
 			protoResults.length,
 			searchType,
 			protoResults.length === 0,
 			fsContext,
+			searchSource,
 		)
 
 		// Return successful results
@@ -131,7 +141,7 @@ export async function searchFiles(controller: Controller, request: FileSearchReq
 		// fsContextPath may be unset if we threw before resolving the workspace;
 		// getFsInfo handles undefined and returns the unknown sentinel.
 		const fsContext = await getFsInfo(fsContextPath)
-		await telemetryService.captureMentionFailed(mentionType, errorType, errorMessage, fsContext)
+		telemetryService.captureMentionFailed(mentionType, errorType, errorMessage, fsContext)
 
 		return {
 			results: [],
